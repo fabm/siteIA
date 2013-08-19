@@ -1,0 +1,153 @@
+    $(document).ready(function () {
+        $("#procura li.nivel-1+ul").hide();
+        $("#btIterar").click(function () {
+            mostraProximoNivel(iter);
+            iter++
+            $("#resultado").scrollTop(10000);
+        });
+        $("#btReeniciar").click(function () {
+            mostraProximoNivel(0);
+            iter = 1;
+            uEncontrado = -1;
+            $("#caminhoMaisProximo").empty();
+            $("#resultado").empty();
+            $("#solucao").empty();
+            $("#btIterar").prop("disabled", false);
+            solucoes.limpa();
+        });
+        solucoes.atualiza();
+    });
+    var iter = 1;
+    var uEncontrado = -1;
+
+    function LigacaoCidade(cidade, distancia) {
+        this.cidade = cidade;
+        this.distancia = distancia;
+    }
+
+    function mostraProximoNivel(i) {
+        solucoes.finalizado = false;
+        $("#procura li.nivel-" + (i + 1) + "+ul").slideUp();
+        $("#procura li.nivel-" + i + "+ul").slideDown(function () {
+            $("#procura").scrollTop(10000);
+        });
+        var dcaminhos = "";
+        var n = $("#procura li.nivel-" + (i + 1));
+
+        //{LigacaoCidade ,
+        // int somaDasDistancias}
+        var arrLinhasCidades = [];
+
+        n.each(function () {
+            var arrLigacaoCidades = [];
+            var noAtual = $(this);
+            while (!noAtual.hasClass("nivel-1")) {
+                arrLigacaoCidades.push(new LigacaoCidade(noAtual.data("cidade"), noAtual.data("distancia")));
+                noAtual = $(noAtual).parent().prev();
+            }
+            arrLigacaoCidades.push(new LigacaoCidade("Arad", 0));
+
+            var somaDistancias = 0;
+            for (var j = 0; j < arrLigacaoCidades.length; j++) {
+                somaDistancias += arrLigacaoCidades[j].distancia;
+            }
+
+            arrLinhasCidades.push({cidades: arrLigacaoCidades, somaDistancias: somaDistancias});
+        });
+
+        for (var ilc = 0; ilc < arrLinhasCidades.length; ilc++) {
+            cidades = arrLinhasCidades[ilc].cidades;
+            soma = arrLinhasCidades[ilc].somaDistancias;
+            var txt = "";
+            //constroi cabeçalho da tabela
+            if (dcaminhos == "") {
+                for (var ic = 0; ic < cidades.length; ic++) {
+                    dcaminhos += "<th>" + "<div>Cidade</div><div>Distância</div>" + "</th>";
+                }
+                dcaminhos = "<tr>" + dcaminhos + "<th>Soma</th></tr>";
+            }
+            solucoes.encontrada = false;
+            //constroi linhas da tabela
+            for (var ic = 0; ic < cidades.length; ic++) {
+                //indice inverso
+                var iic = cidades.length - ic - 1;
+                txt += ("<td><div>" + cidades[iic].cidade + "</div>" +
+                        cidades[iic].distancia + "</td>");
+                if (cidades[iic].cidade == "Bucharest") {
+                    solucoes.put(arrLinhasCidades[ilc]);
+                    solucoes.encontrada = true;
+                }
+            }
+            dcaminhos += ("<tr" + (solucoes.encontrada ? " class='encontrado'" : "") + ">" + txt + "<td>" + soma
+                    + "</td></tr>");
+        }
+
+        if (arrLinhasCidades.length == 0) {
+            solucoes.finalizado = true;
+            solucoes.atualiza();
+            $("#btIterar").prop("disabled", true);
+            $("#solucao").show();
+        }
+        else {
+            $("#resultado").append("<div class='titIteracao'>Iteração " + iter + "</div>")
+            $("#resultado").append("<table class='iteracao'>" + dcaminhos + "</table>");
+        }
+    }
+
+    function strSolucao(candidatas) {
+        var str = "<div>Caminhos encontrados</div><div>";
+        for (var i = 0; i < candidatas.length; i++) {
+            var cidades = candidatas[i].cidades;
+            var somaDistancias = candidatas[i].somaDistancias;
+            str += "<div>";
+            for (var j = 0; j < cidades.length; j++) {
+                var ij = cidades.length - j - 1;
+                str += cidades[ij].cidade;
+                if (j != cidades.length - 1) str += ",";
+            }
+            str += " com " + somaDistancias + "</div>";
+        }
+        return str;
+    }
+
+    var solucoes = {
+        encontrada: false,
+        finalizado: false,
+        arr: [],
+        maisCurto: null,
+        atualiza: function () {
+            if (!this.finalizado && this.arr.length == 0) {
+                $("#solucao").html("Ainda não foi encontrada uma solução");
+            } else if (!this.finalizado && this.arr.length > 0) {
+                $("#solucao").html(strSolucao(this.arr));
+            } else if (this.finalizado && this.arr.length == 0) {
+                $("#solucao").html("Não foi encontrada nenhuma solução");
+            } else if (this.finalizado && this.arr.length > 0) {
+                str = strSolucao(this.arr) + "<div style='margin-top: 2em;'>";
+                str += "<div style='font-size: 16px;font-weight: bolder.;'>O caminho mais curto é:</div>" +
+                        "<div style='font-style: 14px;font-style: italic;'>";
+
+                for (var i = 0; i < this.maisCurto.cidades.length; i++) {
+                    var ii = this.maisCurto.cidades.length - 1 - i;
+                    str += this.maisCurto.cidades[ii].cidade;
+                    if (i < this.maisCurto.cidades.length - 1)str += ",";
+                }
+                str += " com " + this.maisCurto.somaDistancias + "</div></div>";
+                $("#solucao").html(str);
+            }
+        },
+        //devolve se é o caminho mais perto
+        put: function (cidades) {
+            if (this.maisCurto == null || cidades.somaDistancias < this.maisCurto.somaDistancias) {
+                this.maisCurto = cidades;
+            }
+            this.arr.push(cidades);
+            this.atualiza();
+        }, limpa: function () {
+            this.encontrada = false;
+            this.finalizado = false;
+            this.arr = [];
+            this.maisCurto = null;
+        }
+
+    }
